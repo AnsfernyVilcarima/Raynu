@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Trophy, Search } from "lucide-react";
 
 const SHEET_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/1mJQKC7i55bOqzgp_O0amSvhfeW03ojSQJEV6p5SnHOk/export?format=csv&gid=0";
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-mvdq6GnNIyFMXB-MtzLt_bSBfQaGEROvB8lH0iciYXKWRq_i-2cvTj0PYvKTij81NMbkDw87N4Y6/pub?output=csv";
 
 const logoUrl = `${import.meta.env.BASE_URL}logo-raynu.png`;
 
