@@ -1,0 +1,335 @@
+import { useEffect, useMemo, useState } from "react";
+import { Trophy, Search } from "lucide-react";
+
+/* ========= FUENTES DE DATOS =========
+   1) SUPABASE (principal)
+   2) CSV (fallback: RAW del repo o /public)
+*/
+
+// --- SUPABASE ---
+const SUPABASE_URL = "https://tqhosxpgeyimtercgkje.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxaG9zeHBnZXlpbXRlcmNna2plIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzMjkzMDgsImV4cCI6MjA3MzkwNTMwOH0.lPCI0SkWIHhSAnuUjl1HiydfG62ahYfZwGiqrYHWYQI";
+// No enumeramos columnas para evitar 400 por nombres con tildes/espacios
+const API_URL = `${SUPABASE_URL}/rest/v1/raynu_players?select=*`;
+
+// --- CSV (fallback, opcional) ---
+const CSV_URL_RAW = "https://raw.githubusercontent.com/AnsfernyVilcarima/Raynu/main/data/jugadores.csv";
+const CSV_URL_LOCAL = `${import.meta.env.BASE_URL}data/jugadores.csv`;
+
+// Logo en /public/logo-raynu.png
+const logoUrl = `${import.meta.env.BASE_URL}logo-raynu.png`;
+
+/* ===== Helpers ===== */
+const get = (v) => (v ?? "").toString().trim();
+const hasHttp = (s) => /^https?:\/\//i.test(s);
+
+/** Normaliza una fila (Supabase) a { miembros, plataforma, mmr, posicion, calificacion } */
+function normalizeFromSupabase(list) {
+  return (list || [])
+    .map((r) => {
+      // nombres alternos por si el CSV generó columnas “raras”
+      const miembros = get(
+        r.miembros ?? r.Miembros ?? r.nombre ?? r.Jugador ?? r.Player
+      );
+
+      const mmrTxt = get(r.mmr ?? r.MMR).replace(/[^0-9.-]/g, "");
+      const mmr = Number(mmrTxt) || 0;
+
+      let plataforma = get(
+        r.plataforma ??
+        r["Plataforma (URL STREAM)"] ??
+        r.kick ??
+        r.canal ??
+        r.URL
+      );
+      if (plataforma && !hasHttp(plataforma)) {
+        plataforma = `https://kick.com/${plataforma}`;
+      }
+
+      const posicion = get(
+        r.posicion ?? r["posición"] ?? r.rol ?? r.pos ?? r.Role
+      );
+
+      const calificacion = get(
+        r.calificacion ?? r["Calificación"] ?? r.rating ?? r.puntaje
+      );
+
+      return miembros ? { miembros, plataforma, mmr, posicion, calificacion } : null;
+    })
+    .filter(Boolean);
+}
+
+/* CSV parser robusto (comillas + separador auto , ;) */
+function parseCSV(text) {
+  if (text && text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+  const first = (text.split(/\r?\n/)[0] || "");
+  const scoreComma = (first.match(/,/g) || []).length;
+  const scoreSemi = (first.match(/;/g) || []).length;
+  const DELIM = scoreSemi > scoreComma ? ";" : ",";
+
+  const out = [];
+  let i = 0, field = "", row = [], inQuotes = false;
+  while (i < text.length) {
+    const c = text[i];
+    if (c === '"') {
+      if (inQuotes && text[i + 1] === '"') { field += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (c === DELIM && !inQuotes) {
+      row.push(field); field = "";
+    } else if ((c === "\n" || c === "\r") && !inQuotes) {
+      if (field !== "" || row.length) { row.push(field); out.push(row); row = []; field = ""; }
+    } else {
+      field += c;
+    }
+    i++;
+  }
+  if (field !== "" || row.length) { row.push(field); out.push(row); }
+  return out;
+}
+
+/* Normaliza headers CSV (lowercase, sin tildes, sin paréntesis/puntuación extra) */
+const clean = (s) =>
+  get(s)
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\(.*?\)/g, "")
+    .replace(/[^a-z0-9 ]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+/* Normaliza CSV (array[][]) a nuestro esquema interno */
+function fromCSV(raw) {
+  if (!raw || !raw.length) return [];
+  const headers = raw[0].map(clean);
+
+  const find = (...names) => {
+    const keys = names.map(clean);
+    for (let i = 0; i < headers.length; i++) {
+      if (keys.includes(headers[i])) return i;
+    }
+    return -1;
+  };
+
+  const iMiembros = find("miembros", "jugador", "player", "nombre");
+  const iPlataforma = find("plataforma url stream", "plataforma", "kick", "canal", "url");
+  const iMMR = find("mmr");
+  const iPosicion = find("posicion", "posición", "rol", "pos");
+  const iCalif = find("calificacion", "calificación", "rating", "puntaje");
+
+  const rows = [];
+  for (let r = 1; r < raw.length; r++) {
+    const row = raw[r];
+    const miembros = get(row[iMiembros]);
+    if (!miembros) continue;
+
+    const mmrTxt = get(row[iMMR]).replace(/[^0-9.]/g, "");
+    const mmr = Number(mmrTxt) || 0;
+
+    let plataforma = get(row[iPlataforma]);
+    if (plataforma && !hasHttp(plataforma)) plataforma = `https://kick.com/${plataforma}`;
+
+    const posicion = get(row[iPosicion]);
+    const calificacion = get(row[iCalif]);
+
+    rows.push({ miembros, plataforma, mmr, posicion, calificacion });
+  }
+  return rows;
+}
+
+export default function App() {
+  const [rows, setRows] = useState([]);
+  const [q, setQ] = useState("");
+  const [sortKey, setSortKey] = useState("MMR");   // "MMR" | "Miembros"
+  const [sortDir, setSortDir] = useState("desc");  // "asc" | "desc"
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  /** Intenta Supabase; si falla, intenta CSV RAW; si falla, CSV local */
+  async function load() {
+    setLoading(true); setError("");
+    try {
+      // 1) SUPABASE
+      const res = await fetch(API_URL, {
+        headers: {
+          apikey: SUPABASE_ANON,
+          Authorization: `Bearer ${SUPABASE_ANON}`,
+          Accept: "application/json",
+          "Cache-Control": "no-store",
+        },
+        cache: "no-store",
+        mode: "cors",
+      });
+
+      const txt = await res.text();
+      if (!res.ok) throw new Error(`Supabase ${res.status}: ${txt}`);
+
+      const data = JSON.parse(txt);           // puede ser []
+      const mapped = normalizeFromSupabase(data);
+      setRows(mapped);
+    } catch (e1) {
+      console.warn("Supabase falló → CSV RAW…", e1);
+      try {
+        // 2) CSV RAW (GitHub)
+        const res2 = await fetch(CSV_URL_RAW, { cache: "no-store" });
+        if (!res2.ok) throw new Error(`CSV RAW HTTP ${res2.status}`);
+        const text2 = await res2.text();
+        const rows2 = fromCSV(parseCSV(text2));
+        setRows(rows2);
+      } catch (e2) {
+        console.warn("CSV RAW falló → CSV LOCAL…", e2);
+        try {
+          // 3) CSV LOCAL (/public)
+          const res3 = await fetch(CSV_URL_LOCAL, { cache: "no-store" });
+          if (!res3.ok) throw new Error(`CSV LOCAL HTTP ${res3.status}`);
+          const text3 = await res3.text();
+          const rows3 = fromCSV(parseCSV(text3));
+          setRows(rows3);
+        } catch (e3) {
+          console.error("Fallo total:", e3);
+          setError("No se pudo cargar datos. Revisa Supabase o data/jugadores.csv.");
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  const filtered = useMemo(() => {
+    const qq = q.toLowerCase();
+    const base = !qq ? rows : rows.filter((r) =>
+      r.miembros.toLowerCase().includes(qq) ||
+      (r.posicion || "").toLowerCase().includes(qq) ||
+      (r.plataforma || "").toLowerCase().includes(qq)
+    );
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...base].sort((a, b) => {
+      if (sortKey === "MMR") return (a.mmr - b.mmr) * dir;
+      return a.miembros.localeCompare(b.miembros) * dir;
+    });
+  }, [rows, q, sortKey, sortDir]);
+
+  return (
+    <div className="min-h-screen">
+      {/* NAV */}
+      <header className="fixed top-0 inset-x-0 z-50 bg-black/60 backdrop-blur border-b border-white/10">
+        <div className="mx-auto max-w-7xl px-4 h-16 flex items-center justify-between">
+          <a href="#" className="flex items-center gap-3">
+            <img src={logoUrl} alt="Raynu League" className="w-9 h-9 rounded-lg object-cover" />
+            <span className="text-white font-extrabold tracking-wide text-lg">RAYNU</span>
+          </a>
+          <nav className="hidden md:flex items-center gap-4">
+            <a href="#league" className="text-[color:rgb(var(--text-1))] hover:text-white">Raynu League</a>
+            <button onClick={load} className="btn-outline">Recargar</button>
+          </nav>
+        </div>
+      </header>
+
+      {/* HERO */}
+      <section className="pt-28 section">
+        <div className="mx-auto max-w-7xl px-4 grid gap-10 items-center">
+          <div>
+            <h1 className="text-5xl md:text-6xl font-extrabold text-gradient">Raynu League</h1>
+            <p className="mt-4 text-[color:rgb(var(--text-1))]">
+              Torneos y eventos e-sports con estilo propio. Dota 2, Left 4 Dead, y más.
+            </p>
+            <div className="mt-8 flex gap-3">
+              <a href="#league" className="btn-primary">Ver ranking</a>
+              <a href="#contacto" className="btn-outline">Unirme</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* LEAGUE */}
+      <section id="league" className="section">
+        <div className="mx-auto max-w-7xl px-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+            <h2 className="text-3xl md:text-4xl font-extrabold">Ranking & Jugadores</h2>
+            <div className="flex items-center gap-2 text-sm">
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[color:rgb(var(--text-1))]" />
+                <input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Buscar miembro, posición o plataforma"
+                  className="input pl-9 md:w-80"
+                />
+              </div>
+              <span className="text-[color:rgb(var(--text-1))]">Ordenar</span>
+              <select value={sortKey} onChange={(e) => setSortKey(e.target.value)} className="select">
+                <option value="MMR">MMR</option>
+                <option value="Miembros">Miembros</option>
+              </select>
+              <button onClick={() => setSortDir(d => d === "asc" ? "desc" : "asc")} className="btn-outline">
+                {sortDir === "asc" ? "Asc" : "Desc"}
+              </button>
+            </div>
+          </div>
+
+          {loading && <p className="text-sm text-[color:rgb(var(--text-1))]">Cargando jugadores…</p>}
+          {error && <p className="text-sm text-red-400">{error}</p>}
+
+          <div className="panel p-0 overflow-x-auto">
+            <table className="table w-full table-fixed">
+              <colgroup>
+                <col style={{ width: "56px" }} />     {/* # */}
+                <col style={{ width: "26%" }} />      {/* Miembros */}
+                <col style={{ width: "30%" }} />      {/* Plataforma */}
+                <col style={{ width: "12%" }} />      {/* MMR */}
+                <col style={{ width: "20%" }} />      {/* posición */}
+                <col style={{ width: "12%" }} />      {/* Calificación */}
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Miembros</th>
+                  <th>Plataforma (URL STREAM)</th>
+                  <th>MMR</th>
+                  <th>posición</th>
+                  <th>Calificación</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((r, i) => (
+                  <tr key={`${r.miembros}-${i}`}>
+                    <td className="rank">{i + 1}</td>
+                    <td className="text-[color:rgb(var(--text-0))] font-semibold">{r.miembros}</td>
+                    <td>
+                      {r.plataforma
+                        ? <a className="text-cyan-300 hover:underline" href={r.plataforma} target="_blank" rel="noreferrer">
+                          {r.plataforma.replace(/^https?:\/\/(www\.)?/i, "")}
+                        </a>
+                        : "-"}
+                    </td>
+                    <td className="text-[color:rgb(var(--text-0))] font-semibold">
+                      {Number(r.mmr || 0).toLocaleString()}
+                    </td>
+                    <td>{r.posicion || "-"}</td>
+                    <td>{get(r.calificacion) || "-"}</td>
+                  </tr>
+                ))}
+                {!loading && !error && filtered.length === 0 && (
+                  <tr><td colSpan={6} className="p-6 text-center text-[color:rgb(var(--text-1))]">Sin resultados.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="divider-neon my-6"></div>
+          <p className="mt-3 text-xs text-[color:rgb(var(--text-1))]">
+            Puedes editar desde Supabase o subir <code>data/jugadores.csv</code> al repo para fallback.
+          </p>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="section-surface">
+        <div className="mx-auto max-w-7xl px-4 text-[color:rgb(var(--text-1))]">
+          © {new Date().getFullYear()} Raynu. All rights reserved.
+        </div>
+      </footer>
+    </div>
+  );
+}

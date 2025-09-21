@@ -1,0 +1,54 @@
+/* ====== Variables y tema Raynu (CSS puro) ====== */
+:root{
+  --raynu-cyan: 0 229 255;
+  --raynu-red: 255 74 58;
+  --raynu-green: 57 255 20;
+  --bg-0: 5 7 12;
+  --bg-1: 12 16 28;
+  --text-0: 229 231 235;
+  --text-1: 148 163 184;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  color: rgb(var(--text-0));
+  background:
+    radial-gradient(700px 260px at 10% -10%, rgba(var(--raynu-cyan)/0.12), transparent 60%),
+    radial-gradient(700px 260px at 90% -10%, rgba(var(--raynu-red)/0.12), transparent 60%),
+    rgb(var(--bg-0));
+  font-family: 'Outfit', ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial;
+}
+
+h1,h2,h3{
+  font-family: 'Rajdhani','Outfit',ui-sans-serif,system-ui;
+  letter-spacing: .2px;
+}
+
+/* utilidades extra */
+.text-gradient{
+  background: linear-gradient(90deg, rgb(var(--raynu-cyan)) 0%, #7dd3fc 40%, rgb(var(--raynu-red)) 100%);
+  -webkit-background-clip: text; color: transparent;
+}
+.divider-neon{
+  height:1px;
+  background: linear-gradient(90deg, transparent, rgba(var(--raynu-cyan)/0.6), rgba(var(--raynu-red)/0.6), transparent);
+}
+
+/* Estilos específicos que no son utilidades */
+#league{
+  background:
+    radial-gradient(700px 260px at 10% 0%, rgba(var(--raynu-green)/0.15), transparent 60%),
+    radial-gradient(700px 260px at 90% 0%, rgba(var(--raynu-red)/0.12), transparent 60%),
+    rgb(var(--bg-0));
+}
+.table thead tr{
+  background: linear-gradient(90deg, rgba(var(--raynu-cyan)/0.12), rgba(var(--raynu-red)/0.12));
+}
+.table th{ color: rgb(var(--text-0)); padding: .75rem; font-weight: 700; text-align: left; }
+.table td{ color: rgb(var(--text-1)); padding: .75rem; }
+.table tbody tr{ border-bottom: 1px solid rgba(255,255,255,0.1); background: rgb(var(--bg-1)); }
+.table tbody tr:hover{ background: rgba(255,255,255,0.06); }
+.rank{ color: rgb(var(--raynu-green)); font-weight: 700; }
+.table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.table th, .table td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

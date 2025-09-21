@@ -1,52 +1,133 @@
-/* ====== Variables y tema Raynu (CSS puro) ====== */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');
+
 :root{
-  --raynu-cyan: 0 229 255;
-  --raynu-red: 255 74 58;
-  --raynu-green: 57 255 20;
-  --bg-0: 5 7 12;
-  --bg-1: 12 16 28;
-  --text-0: 229 231 235;
-  --text-1: 148 163 184;
+  --bg: #0a0f16;
+  --panel: #0f1724;
+  --panel-2: #0c1220;
+  --text-0: 235 245 255;
+  --text-1: 150 170 190;
+
+  /* Raynu brand */
+  --raynu-cyan: #00e5ff;
+  --raynu-green: #12ff81;
+  --raynu-red: #ff3b5c;
+  --raynu-cyan-rgb: 0,229,255;
+  --raynu-red-rgb: 255,59,92;
+
+  --radius-xl: 16px;
+  --shadow-1: 0 10px 40px rgba(0,0,0,.45);
 }
 
-html { scroll-behavior: smooth; }
-
-body {
-  color: rgb(var(--text-0));
-  background:
-    radial-gradient(700px 260px at 10% -10%, rgba(var(--raynu-cyan)/0.12), transparent 60%),
-    radial-gradient(700px 260px at 90% -10%, rgba(var(--raynu-red)/0.12), transparent 60%),
-    rgb(var(--bg-0));
-  font-family: 'Outfit', ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial;
+*{ box-sizing: border-box; }
+html,body,#root{ height:100%; }
+body{
+  margin:0; background: var(--bg); color: rgb(var(--text-0));
+  font-family: Outfit, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
 }
 
-h1,h2,h3{
-  font-family: 'Rajdhani','Outfit',ui-sans-serif,system-ui;
-  letter-spacing: .2px;
+/* ====== UTILIDADES BASE ====== */
+.section{ padding: 56px 0; }
+.section-surface{ padding: 48px 0; background: linear-gradient(180deg, #0b121e 0%, #0a0f16 100%); }
+.panel{
+  background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-1);
 }
 
-/* utilidades extra */
+.btn-primary, .btn-outline{
+  display:inline-flex; align-items:center; gap:.6rem;
+  padding:.85rem 1.1rem; border-radius: 999px; font-weight:700; letter-spacing:.2px;
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease, color .18s ease, border-color .18s ease;
+  will-change: transform;
+}
+.btn-primary{
+  background: linear-gradient(90deg, var(--raynu-cyan) 0%, var(--raynu-green) 100%);
+  color:#001318; border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 8px 30px rgba(var(--raynu-cyan-rgb),.25);
+}
+.btn-primary:hover{ transform: translateY(-1px) scale(1.02); }
+
+.btn-outline{
+  color: rgb(var(--text-0)); border:1px solid rgba(255,255,255,.18); background: transparent;
+}
+.btn-outline:hover{ border-color: rgba(255,255,255,.35); transform: translateY(-1px); }
+
+/* Campos */
+.input, .select{
+  height:40px; background: rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.1); color: rgb(var(--text-0));
+  border-radius: 999px; padding: 0 .9rem; outline: none;
+}
+.input:focus, .select:focus{ border-color: var(--raynu-cyan); box-shadow: 0 0 0 3px rgba(var(--raynu-cyan-rgb),.15); }
+
+/* Título degradado “gaming” */
 .text-gradient{
-  background: linear-gradient(90deg, rgb(var(--raynu-cyan)) 0%, #7dd3fc 40%, rgb(var(--raynu-red)) 100%);
-  -webkit-background-clip: text; color: transparent;
-}
-.divider-neon{
-  height:1px;
-  background: linear-gradient(90deg, transparent, rgba(var(--raynu-cyan)/0.6), rgba(var(--raynu-red)/0.6), transparent);
+  background: linear-gradient(90deg, #fff 0%, var(--raynu-cyan) 40%, var(--raynu-red) 100%);
+  -webkit-background-clip:text; background-clip:text; color: transparent;
 }
 
-/* Estilos específicos que no son utilidades */
-#league{
+/* Divider glow */
+.divider-neon{
+  height:1px; width:100%; background:
+    radial-gradient(60% 200% at 50% 50%, rgba(var(--raynu-cyan-rgb),.45), transparent 60%),
+    linear-gradient(90deg, transparent, rgba(255,255,255,.1), transparent);
+  filter: blur(.2px);
+}
+
+/* ====== HERO BlueOcean-style ====== */
+.hero{
+  position: relative;
+  padding-top: 112px; padding-bottom: 72px;
+  min-height: 80vh;
+  overflow: hidden;
+}
+.hero .backdrop{
+  position:absolute; inset:-20%;
   background:
-    radial-gradient(700px 260px at 10% 0%, rgba(var(--raynu-green)/0.15), transparent 60%),
-    radial-gradient(700px 260px at 90% 0%, rgba(var(--raynu-red)/0.12), transparent 60%),
-    rgb(var(--bg-0));
+    radial-gradient(40% 35% at 0% 0%, rgba(var(--raynu-cyan-rgb),.22) 0%, transparent 60%),
+    radial-gradient(35% 30% at 100% 0%, rgba(var(--raynu-red-rgb),.18) 0%, transparent 60%),
+    radial-gradient(60% 70% at 50% 110%, rgba(0,0,0,.6) 0%, transparent 60%);
+  filter: blur(30px); pointer-events:none;
 }
-.table thead tr{
-  background: linear-gradient(90deg, rgba(var(--raynu-cyan)/0.12), rgba(var(--raynu-red)/0.12));
+.hero .ring{
+  position:absolute; width:520px; height:520px; border-radius:999px;
+  border:1px solid rgba(255,255,255,.08);
+  left: -120px; top: -160px; transform: rotate(8deg);
 }
-.table th{ color: rgb(var(--text-0)); padding: .75rem; font-weight: 700; text-align: left; }
-.table td{ color: rgb(var(--text-1)); padding: .75rem; }
-.table tbody tr{ border-bottom: 1px solid rgba(255,255,255,0.1); background: rgb(var(--bg-1)); }
-.table tbody tr:hover{ background: rgba(255,255,255,0.06); }
-.rank{ color: rgb(var(--raynu-green)); font-weight: 700; }
+.hero .ring:after{
+  content:""; position:absolute; inset:-1px; border-radius:inherit;
+  background: conic-gradient(from 0deg, rgba(var(--raynu-cyan-rgb),.55), transparent 40%, rgba(var(--raynu-red-rgb),.45), transparent 80%, rgba(var(--raynu-cyan-rgb),.55));
+  filter: blur(12px); opacity:.4;
+}
+.hero .glow{
+  position:absolute; right:-160px; top: 10%;
+  width:560px; height:560px; border-radius:50%;
+  background: radial-gradient(closest-side, rgba(var(--raynu-red-rgb),.30), transparent 70%);
+  filter: blur(30px);
+}
+
+/* ====== TABLA ====== */
+.table{ width:100%; border-collapse: collapse; table-layout: fixed; }
+.table thead th{
+  text-align:left; padding:16px; font-weight:800; font-size:14px; letter-spacing:.3px;
+  background: linear-gradient(90deg, rgba(0,229,255,.12), rgba(66,71,88,.10), rgba(255,59,92,.12));
+}
+.table tbody td{ padding:16px; border-top:1px solid rgba(255,255,255,.06); color: rgb(var(--text-1)); }
+.table .rank{ color:#9fbad1; font-weight:800; }
+.table th, .table td{ white-space: nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* Quitar sticky si lo tenías */
+.table thead, .table thead tr, .table thead th { position: static !important; top:auto !important; }
+
+/* Chips */
+.chip{
+  display:inline-flex; align-items:center; gap:.4rem;
+  height:30px; padding:0 .8rem; border-radius:999px;
+  font-weight:700; color:#001318; background: rgba(0,229,255,.16);
+  border:1px solid rgba(0,229,255,.45);
+  color: var(--raynu-cyan);
+}
+
+/* Max width helper */
+.container{ width:100%; max-width: 1120px; margin:0 auto; padding: 0 16px; }
