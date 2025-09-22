@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import Home from "./pages/Home";
 import League from "./pages/League";
+import Nosotros from "./pages/Nosotros";
 
 const BASE = import.meta.env.BASE_URL;            // p.ej. "/Raynu/"
 const href = (hash) => `${BASE}#${hash}`;
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/league" element={<League />} />
           <Route path="*" element={<div className="section"><div className="container">Página no encontrada.</div></div>} />
+          <Route path="/nosotros" element={<Nosotros />} />
         </Routes>
       </main>
       <Footer />
